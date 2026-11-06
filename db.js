@@ -19,6 +19,17 @@ class ExpenseDB {
 
   async init() {
     if (this.db) return this.db;
+
+    // Request permanent browser storage persistence (prevents OS auto-eviction)
+    try {
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+        const isPersisted = await navigator.storage.persist();
+        console.log('IndexedDB persistent storage granted:', isPersisted);
+      }
+    } catch (err) {
+      console.warn('Storage persistence request failed:', err);
+    }
+
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
 

@@ -251,8 +251,8 @@
         <!-- Segmented Preset Pills -->
         <div class="bg-slate-100 p-1 rounded-xl flex flex-wrap gap-1 text-xs">
           <button onclick="setCyclePreset('all')" class="px-3 py-1 rounded-lg hover:bg-white text-slate-700 font-semibold transition">All Records</button>
-          <button onclick="setCyclePreset('oct')" class="px-3 py-1 rounded-lg hover:bg-white text-blue-700 font-semibold transition">Oct Tour (6-18)</button>
-          <button onclick="setCyclePreset('this_month')" class="px-3 py-1 rounded-lg hover:bg-white text-slate-700 font-semibold transition">This Month</button>
+          <button onclick="setCyclePreset('this_month')" class="px-3 py-1 rounded-lg hover:bg-white text-blue-700 font-semibold transition">This Month</button>
+          <button onclick="setCyclePreset('this_week')" class="px-3 py-1 rounded-lg hover:bg-white text-slate-700 font-semibold transition">This Week</button>
           <button onclick="setCyclePreset('last_30')" class="px-3 py-1 rounded-lg hover:bg-white text-slate-700 font-semibold transition">Last 30 Days</button>
         </div>
       </div>
@@ -369,13 +369,13 @@
             <i class="fa-regular fa-folder-open"></i>
           </div>
           <div class="text-base font-bold text-slate-700">No expenses recorded yet</div>
-          <p class="text-xs text-slate-400 max-w-sm mx-auto">Add an expense or load the demo tour data to test exports and vouchers.</p>
+          <p class="text-xs text-slate-400 max-w-sm mx-auto">Add an expense or load sample demo data to test calculations and vouchers.</p>
           <div class="flex flex-wrap justify-center gap-2 pt-2">
             <button onclick="openAddModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
               <i class="fa-solid fa-plus"></i> Add First Expense
             </button>
             <button onclick="loadDemoTourData()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full text-xs font-bold shadow-sm flex items-center gap-1.5 transition">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Load Oct Tour Demo (56 Records)
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Load Sample Demo (4 Records)
             </button>
           </div>
         </div>
@@ -765,9 +765,11 @@
       if (type === 'all') {
         sInput.value = '';
         eInput.value = '';
-      } else if (type === 'oct') {
-        sInput.value = '2026-10-06';
-        eInput.value = '2026-10-18';
+      } else if (type === 'this_week') {
+        const past = new Date(today);
+        past.setDate(past.getDate() - 7);
+        sInput.value = past.toISOString().split('T')[0];
+        eInput.value = today.toISOString().split('T')[0];
       } else if (type === 'this_month') {
         const year = today.getFullYear();
         const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -1481,27 +1483,41 @@
       reader.readAsText(file);
     }
 
-    // Load Demo Tour Data (56 items)
+    // Load Sample Demo Data
     async function loadDemoTourData() {
       if (!window.DEMO_TOUR_DATA || window.DEMO_TOUR_DATA.length === 0) {
         alert("Demo data not available.");
         return;
       }
-      if (!confirm(`Load 56 sample tour records into your device database for testing?`)) return;
+      if (!confirm("Load sample project demo (1 Company Advance + 4 Expenses) to test calculations and exports?")) return;
 
+      if (window.DEMO_ADVANCE_DATA) {
+        for (const f of window.DEMO_ADVANCE_DATA) {
+          await window.appDB.addFund(f);
+        }
+      }
       for (const item of window.DEMO_TOUR_DATA) {
         await window.appDB.addExpense(item);
       }
-      showToast("Loaded 56 sample tour records!");
+      showToast("Loaded sample demo data!");
       await applyFilter();
     }
 
-    // Clear All Data
+    // Clear All Data (with automatic emergency safety backup)
     async function clearAllData() {
-      if (confirm("Are you sure you want to delete ALL records (expenses and company advances) from this device? Make sure you have downloaded a Backup, PDF, or Excel sheet first!")) {
-        if (confirm("Confirm one more time: delete all local records?")) {
+      const allExpenses = await window.appDB.getAllExpenses();
+      const allFunds = await window.appDB.getAllFunds();
+      if (allExpenses.length === 0 && allFunds.length === 0) {
+        showToast("No data to clear.");
+        return;
+      }
+      if (confirm("Are you sure you want to delete ALL records from this device? Make sure you have downloaded a Backup, PDF, or Excel sheet first!")) {
+        if (confirm("Confirm one more time: delete all local records? (An emergency safety backup file will be automatically downloaded to your device before clearing)")) {
+          try {
+            await backupData();
+          } catch(e) {}
           await window.appDB.clearAll();
-          showToast("All data cleared from device.");
+          showToast("All data cleared. Emergency backup file saved to Downloads.");
           await applyFilter();
         }
       }

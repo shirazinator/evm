@@ -36,7 +36,7 @@ Live Web App / Hosted on GitHub Pages:
 
 5. **Trip & Date Range Filter:**
    - Filter expenses for a specific project tour or monthly billing cycle without mixing with other records.
-   - Quick presets: All Records, Oct Tour (6-18), This Month, Last 30 Days.
+   - Quick presets: All Records, This Month, This Week, Last 30 Days.
 
 6. **Official Audit Exports (100% In-Browser):**
    - **Download PDF Vouchers:** Exact 1-page-per-voucher audit PDF generated directly inside the browser using `pdf-lib` with financial advance summary in the footer.
