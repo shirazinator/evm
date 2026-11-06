@@ -34,16 +34,21 @@
     :root {
       --app-font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     }
+    html {
+      background-color: #18181B;
+    }
     body {
       font-family: var(--app-font);
       background-color: #F8FAFC;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
+    .apple-header {
+      background: #18181B;
+      padding-top: env(safe-area-inset-top, 0px);
+    }
     .apple-glass {
-      background: rgba(24, 24, 27, 0.92);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      background: #18181B;
     }
     .apple-card {
       background: #FFFFFF;
@@ -78,7 +83,7 @@
 <body class="min-h-screen text-slate-800 pb-28 overflow-x-hidden">
 
   <!-- TOP NAVIGATION BAR (macOS / iOS Native Style) -->
-  <header class="apple-glass text-white sticky top-0 z-40 border-b border-white/10 shadow-sm">
+  <header class="apple-header text-white sticky top-0 z-40 border-b border-white/10 shadow-sm">
     <div class="max-w-6xl mx-auto px-4 py-3 sm:py-3.5">
       
       <!-- Top Row: Brand & Developer Credit (Full width on mobile, inline on desktop) -->
@@ -691,7 +696,7 @@
     // Register Service Worker for PWA with auto-update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=3').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installing = reg.installing;
