@@ -1,4 +1,4 @@
-const CACHE_NAME = 'expense-voucher-cache-v2';
+const CACHE_NAME = 'expense-voucher-cache-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,10 @@ const ASSETS = [
   './demo-data.js',
   './pdf-export.js',
   './excel-export.js',
-  './manifest.json'
+  './manifest.json',
+  './apple-touch-icon.png',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 self.addEventListener('install', (e) => {
