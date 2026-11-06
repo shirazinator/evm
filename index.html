@@ -44,11 +44,13 @@
       -moz-osx-font-smoothing: grayscale;
     }
     .apple-header {
-      background: #18181B;
-      padding-top: env(safe-area-inset-top, 0px);
+      background: #18181B !important;
+      padding-top: max(env(safe-area-inset-top, 0px), 12px) !important;
     }
     .apple-glass {
-      background: #18181B;
+      background: #18181B !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
     .apple-card {
       background: #FFFFFF;
@@ -83,7 +85,7 @@
 <body class="min-h-screen text-slate-800 pb-28 overflow-x-hidden">
 
   <!-- TOP NAVIGATION BAR (macOS / iOS Native Style) -->
-  <header class="apple-header text-white sticky top-0 z-40 border-b border-white/10 shadow-sm">
+  <header class="apple-header text-white sticky top-0 z-40 border-b border-white/10 shadow-sm" style="background-color: #18181B; padding-top: max(env(safe-area-inset-top, 0px), 12px);">
     <div class="max-w-6xl mx-auto px-4 py-3 sm:py-3.5">
       
       <!-- Top Row: Brand & Developer Credit (Full width on mobile, inline on desktop) -->
@@ -696,7 +698,7 @@
     // Register Service Worker for PWA with auto-update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=4').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=5').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installing = reg.installing;
