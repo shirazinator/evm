@@ -1,13 +1,13 @@
 {
-  "name": "Expense Voucher & Fund Manager",
-  "short_name": "Expenses",
+  "name": "Expense & Advance Manager",
+  "short_name": "EVM",
   "description": "Daily expense tracker and audit-ready voucher generator by Shiraz",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0F172A",
-  "theme_color": "#0F172A",
+  "background_color": "#18181B",
+  "theme_color": "#18181B",
   "icons": [
     {
       "src": "icon-192.png",
