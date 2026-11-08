@@ -142,6 +142,17 @@ class ExpenseDB {
     });
   }
 
+  async getExpense(id) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('expenses', 'readonly');
+      const store = tx.objectStore('expenses');
+      const req = store.get(Number(id));
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
   async getAllExpenses(startDate = null, endDate = null, category = 'all', search = '') {
     await this.init();
     return new Promise((resolve, reject) => {
@@ -217,6 +228,39 @@ class ExpenseDB {
       const store = tx.objectStore('funds');
       const req = store.delete(Number(id));
       req.onsuccess = () => resolve(true);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async getFund(id) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('funds', 'readonly');
+      const store = tx.objectStore('funds');
+      const req = store.get(Number(id));
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async updateFund(id, data) {
+    await this.init();
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction('funds', 'readwrite');
+      const store = tx.objectStore('funds');
+      const total = this.parseAmount(data.amountExpression || data.amount || data.amountTotal);
+      const record = {
+        id: Number(id),
+        date: data.date,
+        source: data.source || 'Company Advance',
+        amountExpression: String(data.amountExpression || data.amount || '0'),
+        amountTotal: total,
+        remark: data.remark || '',
+        payments: data.payments || [],
+        updatedAt: new Date().toISOString()
+      };
+      const req = store.put(record);
+      req.onsuccess = () => resolve(req.result);
       req.onerror = () => reject(req.error);
     });
   }

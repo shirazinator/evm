@@ -348,7 +348,27 @@
     </div>
 
     <!-- VIEW 1: EXPENSES TABLE / CARDS -->
-    <div id="viewExpenses" class="space-y-4">
+    <div id="viewExpenses" class="space-y-3">
+      <!-- Quick Day Filter & Collapse Controls -->
+      <div class="apple-card rounded-2xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white border border-slate-200/90 shadow-2xs">
+        <div class="flex items-center gap-2.5 flex-1 min-w-[200px]">
+          <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5 shrink-0">
+            <i class="fa-regular fa-calendar-days text-blue-600"></i> View Date:
+          </span>
+          <select id="quickDaySelect" onchange="onQuickDayChange(this.value)" class="w-full max-w-sm text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition">
+            <option value="all">📅 All Dates (Grouped &amp; Collapsible)</option>
+          </select>
+        </div>
+        <div class="flex items-center justify-end gap-2 shrink-0">
+          <button type="button" onclick="toggleAllDaySections(true)" class="text-[11px] font-semibold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-angles-down text-[10px]"></i> Expand All
+          </button>
+          <button type="button" onclick="toggleAllDaySections(false)" class="text-[11px] font-semibold text-slate-600 hover:text-slate-900 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg transition flex items-center gap-1">
+            <i class="fa-solid fa-angles-up text-[10px]"></i> Collapse All
+          </button>
+        </div>
+      </div>
+
       <div class="apple-card rounded-2xl overflow-hidden">
         
         <!-- Desktop Table -->
@@ -363,14 +383,14 @@
                 <th class="px-4 py-3 w-28 text-right">Amount</th>
                 <th class="px-4 py-3 w-36 text-center">Attachments</th>
                 <th class="px-4 py-3">Audit Note</th>
-                <th class="px-4 py-3 w-16 text-center">Action</th>
+                <th class="px-4 py-3 w-20 text-center">Action</th>
               </tr>
             </thead>
             <tbody id="expensesTableBody" class="divide-y divide-slate-200"></tbody>
           </table>
 
           <!-- Mobile Card List View -->
-          <div id="expensesMobileList" class="divide-y divide-slate-200 md:hidden"></div>
+          <div id="expensesMobileList" class="p-2 space-y-2 md:hidden"></div>
         </div>
 
         <!-- Empty state -->
@@ -416,7 +436,7 @@
                 <th class="px-4 py-3 w-32 text-right">Amount (INR)</th>
                 <th class="px-4 py-3 w-28 text-center">Proof / Screenshot</th>
                 <th class="px-4 py-3">Reference / Remarks</th>
-                <th class="px-4 py-3 w-16 text-center">Action</th>
+                <th class="px-4 py-3 w-20 text-center">Action</th>
               </tr>
             </thead>
             <tbody id="fundsTableBody" class="divide-y divide-slate-200"></tbody>
@@ -459,10 +479,10 @@
       <!-- Modal Header -->
       <div class="px-5 py-3.5 bg-slate-900 text-white flex justify-between items-center shrink-0">
         <div class="flex items-center gap-2">
-          <i class="fa-solid fa-receipt text-emerald-400"></i>
-          <h2 class="font-bold text-base">Record New Expense</h2>
+          <i id="modalExpenseIcon" class="fa-solid fa-receipt text-emerald-400"></i>
+          <h2 id="modalExpenseTitle" class="font-bold text-base">Record New Expense</h2>
         </div>
-        <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-lg">
+        <button type="button" onclick="closeAddModal()" class="text-slate-400 hover:text-white text-lg">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -601,10 +621,10 @@
       <!-- Modal Header -->
       <div class="px-5 py-3.5 bg-indigo-950 text-white flex justify-between items-center shrink-0">
         <div class="flex items-center gap-2">
-          <i class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
-          <h2 class="font-bold text-base">Record Company Advance / Fund</h2>
+          <i id="modalFundIcon" class="fa-solid fa-hand-holding-dollar text-indigo-400"></i>
+          <h2 id="modalFundTitle" class="font-bold text-base">Record Company Advance / Fund</h2>
         </div>
-        <button onclick="closeAddFundModal()" class="text-slate-400 hover:text-white text-lg">
+        <button type="button" onclick="closeAddFundModal()" class="text-slate-400 hover:text-white text-lg">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -702,7 +722,7 @@
     // Register Service Worker for PWA with auto-update
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js?v=6').then((reg) => {
+        navigator.serviceWorker.register('./sw.js?v=7').then((reg) => {
           reg.update();
           reg.onupdatefound = () => {
             const installing = reg.installing;
@@ -732,9 +752,130 @@
       }, 500);
     }
 
+    // Global State for UI & In-Place Editing
+    let selectedQuickDay = 'all';
+    let expandedDays = new Set();
+    let collapsedDays = new Set();
+    let lastExpenseDate = new Date().toISOString().split('T')[0];
+    let lastFundDate = new Date().toISOString().split('T')[0];
+    let editingExpenseId = null;
+    let editingFundId = null;
+
+    // Helper to format date with day name & relative indicator
+    function formatFriendlyDate(dateStr) {
+      if (!dateStr) return 'Undated';
+      try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const yDate = new Date();
+        yDate.setDate(yDate.getDate() - 1);
+        const yesterdayStr = yDate.toISOString().split('T')[0];
+
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+          const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          const options = { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' };
+          const formatted = d.toLocaleDateString('en-IN', options);
+
+          if (dateStr === todayStr) {
+            return `Today (${formatted})`;
+          } else if (dateStr === yesterdayStr) {
+            return `Yesterday (${formatted})`;
+          }
+          return formatted;
+        }
+        return dateStr;
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    function sanitizeId(str) {
+      return String(str).replace(/[^a-zA-Z0-9_-]/g, '_');
+    }
+
+    function isDayOpen(dateStr, isFirstGroup) {
+      if (selectedQuickDay !== 'all') return true;
+      if (expandedDays.has(dateStr)) return true;
+      if (collapsedDays.has(dateStr)) return false;
+      return isFirstGroup; // Default: first (newest) date is open, older ones collapsed
+    }
+
+    function toggleDayAccordion(dateStr) {
+      const safe = sanitizeId(dateStr);
+      const isCurrentlyOpen = isDayOpen(dateStr, false) || (expandedDays.has(dateStr)) || (!collapsedDays.has(dateStr) && document.getElementById(`day-mob-body-${safe}`) && !document.getElementById(`day-mob-body-${safe}`).classList.contains('hidden'));
+
+      if (isCurrentlyOpen) {
+        expandedDays.delete(dateStr);
+        collapsedDays.add(dateStr);
+      } else {
+        collapsedDays.delete(dateStr);
+        expandedDays.add(dateStr);
+      }
+
+      // Update Mobile DOM
+      const mobBody = document.getElementById(`day-mob-body-${safe}`);
+      const mobIcon = document.getElementById(`day-mob-icon-${safe}`);
+      if (mobBody) {
+        if (isCurrentlyOpen) {
+          mobBody.classList.add('hidden');
+          if (mobIcon) mobIcon.classList.add('-rotate-90');
+        } else {
+          mobBody.classList.remove('hidden');
+          if (mobIcon) mobIcon.classList.remove('-rotate-90');
+        }
+      }
+
+      // Update Desktop DOM
+      const deskRows = document.querySelectorAll(`.day-desk-row-${safe}`);
+      const deskIcon = document.getElementById(`day-desk-icon-${safe}`);
+      deskRows.forEach(r => {
+        if (isCurrentlyOpen) {
+          r.classList.add('hidden');
+        } else {
+          r.classList.remove('hidden');
+        }
+      });
+      if (deskIcon) {
+        if (isCurrentlyOpen) {
+          deskIcon.classList.add('-rotate-90');
+        } else {
+          deskIcon.classList.remove('-rotate-90');
+        }
+      }
+    }
+
+    function onQuickDayChange(val) {
+      selectedQuickDay = val;
+      if (val !== 'all') {
+        expandedDays.add(val);
+        collapsedDays.delete(val);
+      }
+      renderExpensesList(currentExpenses);
+    }
+
+    function toggleAllDaySections(expand) {
+      const groups = {};
+      currentExpenses.forEach(e => {
+        const d = e.date || 'Undated';
+        groups[d] = true;
+      });
+      Object.keys(groups).forEach(d => {
+        if (expand) {
+          expandedDays.add(d);
+          collapsedDays.delete(d);
+        } else {
+          collapsedDays.add(d);
+          expandedDays.delete(d);
+        }
+      });
+      renderExpensesList(currentExpenses);
+    }
+
     // On Load
     document.addEventListener('DOMContentLoaded', async () => {
       const today = new Date().toISOString().split('T')[0];
+      lastExpenseDate = today;
+      lastFundDate = today;
       document.getElementById('newDate').value = today;
       document.getElementById('fundDate').value = today;
 
@@ -857,7 +998,6 @@
       const footnote = document.getElementById('settlementFootNote');
 
       if (netSettlement > 0) {
-        // Expenses exceed Advance -> Employee is owed reimbursement!
         settlementCard.className = "rounded-3xl p-5 shadow-sm text-white flex flex-col justify-between transition-all duration-200 bg-gradient-to-br from-emerald-600 to-teal-800";
         statusLabel.textContent = "Reimbursement Due";
         pill.textContent = "Company Payable";
@@ -866,7 +1006,6 @@
         sub.textContent = `Out-of-pocket expenses beyond company advance`;
         footnote.textContent = `Company owes this balance to employee`;
       } else if (netSettlement < 0) {
-        // Advance exceeds Expenses -> Employee has unspent company money
         settlementCard.className = "rounded-3xl p-5 shadow-sm text-white flex flex-col justify-between transition-all duration-200 bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900";
         statusLabel.textContent = "Advance Remaining";
         pill.textContent = "Balance to Return";
@@ -875,7 +1014,6 @@
         sub.textContent = `Unspent advance funds remaining in hand`;
         footnote.textContent = `Balance to return to company account`;
       } else {
-        // Exactly Settled
         settlementCard.className = "rounded-3xl p-5 shadow-sm text-white flex flex-col justify-between transition-all duration-200 bg-gradient-to-br from-slate-700 to-zinc-900";
         statusLabel.textContent = "Settlement Balance";
         pill.textContent = "Fully Settled";
@@ -890,81 +1028,194 @@
       renderFundsList(funds);
     }
 
+    // Render Grouped Expenses List with Quick Day Dropdown & Accordion
     function renderExpensesList(list) {
       const tbody = document.getElementById('expensesTableBody');
       const mobileList = document.getElementById('expensesMobileList');
       const emptyState = document.getElementById('emptyState');
+      const quickSelect = document.getElementById('quickDaySelect');
 
       tbody.innerHTML = '';
       mobileList.innerHTML = '';
 
       if (list.length === 0) {
         emptyState.classList.remove('hidden');
+        if (quickSelect) {
+          quickSelect.innerHTML = `<option value="all">📅 No records found</option>`;
+        }
         return;
       }
       emptyState.classList.add('hidden');
 
-      list.forEach((e, idx) => {
-        const sNo = idx + 1;
-        const payments = e.payments || [];
-        const bills = e.bills || [];
+      // 1. Group expenses by Date
+      const groups = {};
+      list.forEach(e => {
+        const d = e.date || 'Undated';
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(e);
+      });
 
-        // Desktop Row
-        const tr = document.createElement('tr');
-        tr.className = "hover:bg-slate-50/80 transition";
-        tr.innerHTML = `
-          <td class="px-4 py-3.5 text-center font-bold text-slate-400">${sNo}</td>
-          <td class="px-4 py-3.5 font-semibold text-slate-600 whitespace-nowrap">${e.date}</td>
-          <td class="px-4 py-3.5 font-bold text-slate-800">${e.description}</td>
-          <td class="px-4 py-3.5">
-            <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${getCategoryBadgeClass(e.category)}">${e.category}</span>
-          </td>
-          <td class="px-4 py-3.5 text-right font-black text-emerald-700 whitespace-nowrap">₹ ${e.amountExpression || e.amountTotal}</td>
-          <td class="px-4 py-3.5 text-center">
-            <div class="flex items-center justify-center gap-1.5">
-              ${renderBlobThumbnails(payments, 'Payment')}
-              ${renderBlobThumbnails(bills, 'Bill')}
-              ${bills.length === 0 ? '<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200/80 px-2 py-0.5 rounded-full font-bold">No Bill</span>' : ''}
+      // Sort dates descending (newest date first)
+      const sortedDates = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+      // 2. Populate quickDaySelect
+      if (quickSelect) {
+        const prevVal = selectedQuickDay;
+        let selectHtml = `<option value="all">📅 All Dates (${list.length} expenses)</option>`;
+        sortedDates.forEach(d => {
+          const daySum = groups[d].reduce((sum, item) => sum + (item.amountTotal || 0), 0);
+          const friendly = formatFriendlyDate(d);
+          selectHtml += `<option value="${d}" ${d === prevVal ? 'selected' : ''}>${friendly} (${groups[d].length} items • ₹ ${daySum.toLocaleString('en-IN', {minimumFractionDigits: 2})})</option>`;
+        });
+        quickSelect.innerHTML = selectHtml;
+        if (prevVal !== 'all' && !sortedDates.includes(prevVal)) {
+          selectedQuickDay = 'all';
+          quickSelect.value = 'all';
+        }
+      }
+
+      // Filter dates if specific day selected
+      const datesToRender = (selectedQuickDay !== 'all' && groups[selectedQuickDay]) 
+        ? [selectedQuickDay] 
+        : sortedDates;
+
+      let globalIdx = 0;
+
+      // 3. Render each date group
+      datesToRender.forEach((date, groupIdx) => {
+        const items = groups[date];
+        const dayTotal = items.reduce((sum, it) => sum + (it.amountTotal || 0), 0);
+        const friendlyDate = formatFriendlyDate(date);
+        const safe = sanitizeId(date);
+        const isOpen = isDayOpen(date, groupIdx === 0);
+
+        const isToday = friendlyDate.startsWith('Today');
+        const isYesterday = friendlyDate.startsWith('Yesterday');
+        const badgeColor = isToday 
+          ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+          : isYesterday 
+          ? 'bg-blue-100 text-blue-800 border-blue-300' 
+          : 'bg-slate-200 text-slate-700 border-slate-300';
+
+        // --- DESKTOP TABLE GROUP HEADER ROW ---
+        const groupTr = document.createElement('tr');
+        groupTr.className = "bg-slate-100/90 font-bold text-slate-800 cursor-pointer hover:bg-slate-200/90 transition select-none border-t-2 border-slate-300/80";
+        groupTr.onclick = () => toggleDayAccordion(date);
+        groupTr.innerHTML = `
+          <td colspan="8" class="px-4 py-2.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 text-xs">
+                <i id="day-desk-icon-${safe}" class="fa-solid fa-chevron-down text-slate-500 text-xs transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}"></i>
+                <span class="font-extrabold text-slate-900">${friendlyDate}</span>
+                <span class="px-2 py-0.5 text-[10px] rounded-full font-bold border ${badgeColor}">${items.length} voucher${items.length === 1 ? '' : 's'}</span>
+              </div>
+              <div class="text-xs font-black text-emerald-700">
+                Day Total: ₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+              </div>
             </div>
           </td>
-          <td class="px-4 py-3.5 text-slate-500 text-xs italic">${e.remark || '-'}</td>
-          <td class="px-4 py-3.5 text-center">
-            <button onclick="deleteExpenseItem(${e.id})" class="text-slate-400 hover:text-rose-600 transition" title="Delete">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
-          </td>
         `;
-        tbody.appendChild(tr);
+        tbody.appendChild(groupTr);
 
-        // Mobile Card
-        const card = document.createElement('div');
-        card.className = "p-4 space-y-2 hover:bg-slate-50/60 transition";
-        card.innerHTML = `
-          <div class="flex justify-between items-start">
+        // --- DESKTOP TABLE ITEM ROWS ---
+        items.forEach(e => {
+          globalIdx++;
+          const payments = e.payments || [];
+          const bills = e.bills || [];
+
+          const tr = document.createElement('tr');
+          tr.className = `day-desk-row-${safe} hover:bg-slate-50/80 transition ${isOpen ? '' : 'hidden'}`;
+          tr.innerHTML = `
+            <td class="px-4 py-3 text-center font-bold text-slate-400">${globalIdx}</td>
+            <td class="px-4 py-3 font-semibold text-slate-600 whitespace-nowrap">${e.date}</td>
+            <td class="px-4 py-3 font-bold text-slate-800">${e.description}</td>
+            <td class="px-4 py-3">
+              <span class="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${getCategoryBadgeClass(e.category)}">${e.category}</span>
+            </td>
+            <td class="px-4 py-3 text-right font-black text-emerald-700 whitespace-nowrap">₹ ${e.amountExpression || e.amountTotal}</td>
+            <td class="px-4 py-3 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                ${renderBlobThumbnails(payments, 'Payment')}
+                ${renderBlobThumbnails(bills, 'Bill')}
+                ${bills.length === 0 ? '<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200/80 px-2 py-0.5 rounded-full font-bold">No Bill</span>' : ''}
+              </div>
+            </td>
+            <td class="px-4 py-3 text-slate-500 text-xs italic">${e.remark || '-'}</td>
+            <td class="px-4 py-3 text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-2">
+                <button onclick="editExpenseItem(${e.id})" class="text-slate-400 hover:text-blue-600 transition p-1" title="Edit Expense">
+                  <i class="fa-solid fa-pen-to-square"></i>
+                </button>
+                <button onclick="deleteExpenseItem(${e.id})" class="text-slate-400 hover:text-rose-600 transition p-1" title="Delete">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // --- MOBILE ACCORDION CARD ---
+        const mobCard = document.createElement('div');
+        mobCard.className = "border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs bg-white mb-2.5";
+        
+        let mobItemsHtml = '';
+        items.forEach((e, itemIdx) => {
+          const payments = e.payments || [];
+          const bills = e.bills || [];
+          mobItemsHtml += `
+            <div class="p-3.5 space-y-2 hover:bg-slate-50/60 transition">
+              <div class="flex justify-between items-start">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="text-xs font-bold text-slate-400">#${itemIdx + 1}</span>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${getCategoryBadgeClass(e.category)}">${e.category}</span>
+                </div>
+                <div class="text-sm font-black text-emerald-700">₹ ${e.amountExpression || e.amountTotal}</div>
+              </div>
+              <div class="font-bold text-slate-800 text-sm">${e.description}</div>
+              ${e.remark ? `<div class="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-xl border border-slate-100">${e.remark}</div>` : ''}
+              <div class="flex items-center justify-between pt-1">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  ${renderBlobThumbnails(payments, 'Payment')}
+                  ${renderBlobThumbnails(bills, 'Bill')}
+                  ${bills.length === 0 ? '<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">No Bill</span>' : ''}
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="editExpenseItem(${e.id})" class="text-slate-600 hover:text-blue-600 text-xs px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 font-semibold flex items-center gap-1 transition">
+                    <i class="fa-solid fa-pen-to-square text-[11px]"></i> Edit
+                  </button>
+                  <button onclick="deleteExpenseItem(${e.id})" class="text-slate-400 hover:text-rose-600 text-xs p-1" title="Delete">
+                    <i class="fa-regular fa-trash-can"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        mobCard.innerHTML = `
+          <button type="button" onclick="toggleDayAccordion('${date}')" class="w-full px-4 py-3 bg-slate-50/90 hover:bg-slate-100 border-b border-slate-200/80 flex items-center justify-between text-left transition select-none">
             <div class="flex items-center gap-2">
-              <span class="text-xs font-bold text-slate-400">#${sNo}</span>
-              <span class="text-xs text-slate-500 font-semibold">${e.date}</span>
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${getCategoryBadgeClass(e.category)}">${e.category}</span>
+              <i id="day-mob-icon-${safe}" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}"></i>
+              <div>
+                <span class="font-bold text-slate-800 text-xs sm:text-sm">${friendlyDate}</span>
+                <span class="ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">${items.length} item${items.length === 1 ? '' : 's'}</span>
+              </div>
             </div>
-            <div class="text-sm font-black text-emerald-700">₹ ${e.amountExpression || e.amountTotal}</div>
-          </div>
-          <div class="font-bold text-slate-800 text-sm">${e.description}</div>
-          ${e.remark ? `<div class="text-xs text-slate-500 italic bg-slate-50 p-2 rounded-xl border border-slate-100">${e.remark}</div>` : ''}
-          <div class="flex items-center justify-between pt-1">
-            <div class="flex items-center gap-1.5">
-              ${renderBlobThumbnails(payments, 'Payment')}
-              ${renderBlobThumbnails(bills, 'Bill')}
-              ${bills.length === 0 ? '<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">No Bill</span>' : ''}
+            <div class="text-right">
+              <span class="text-xs sm:text-sm font-black text-emerald-700">₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
             </div>
-            <button onclick="deleteExpenseItem(${e.id})" class="text-slate-400 hover:text-rose-600 text-xs p-1">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+          </button>
+          <div id="day-mob-body-${safe}" class="divide-y divide-slate-100 ${isOpen ? '' : 'hidden'}">
+            ${mobItemsHtml}
           </div>
         `;
-        mobileList.appendChild(card);
+
+        mobileList.appendChild(mobCard);
       });
     }
 
+    // Render Funds List with In-Place Edit Support
     function renderFundsList(list) {
       const tbody = document.getElementById('fundsTableBody');
       const mobileList = document.getElementById('fundsMobileList');
@@ -998,10 +1249,15 @@
             </div>
           </td>
           <td class="px-4 py-3.5 text-slate-600 text-xs">${f.remark || '-'}</td>
-          <td class="px-4 py-3.5 text-center">
-            <button onclick="deleteFundItem(${f.id})" class="text-slate-400 hover:text-rose-600 transition" title="Delete">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+          <td class="px-4 py-3.5 text-center whitespace-nowrap">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="editFundItem(${f.id})" class="text-slate-400 hover:text-indigo-600 transition p-1" title="Edit Advance">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              <button onclick="deleteFundItem(${f.id})" class="text-slate-400 hover:text-rose-600 transition p-1" title="Delete">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
@@ -1023,9 +1279,14 @@
             <div class="flex items-center gap-1.5">
               ${renderBlobThumbnails(proofs, 'Transfer Proof')}
             </div>
-            <button onclick="deleteFundItem(${f.id})" class="text-slate-400 hover:text-rose-600 text-xs p-1">
-              <i class="fa-regular fa-trash-can"></i>
-            </button>
+            <div class="flex items-center gap-2">
+              <button onclick="editFundItem(${f.id})" class="text-indigo-700 hover:text-indigo-900 text-xs px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 font-semibold flex items-center gap-1 transition">
+                <i class="fa-solid fa-pen-to-square text-[11px]"></i> Edit
+              </button>
+              <button onclick="deleteFundItem(${f.id})" class="text-slate-400 hover:text-rose-600 text-xs p-1" title="Delete">
+                <i class="fa-regular fa-trash-can"></i>
+              </button>
+            </div>
           </div>
         `;
         mobileList.appendChild(card);
@@ -1055,36 +1316,152 @@
       }
     }
 
-    // Modal Expense Controls
+    // Modal Expense Controls with Date Retention
     function openAddModal() {
+      if (!editingExpenseId) {
+        const modalTitle = document.getElementById('modalExpenseTitle');
+        const modalIcon = document.getElementById('modalExpenseIcon');
+        const saveBtn = document.getElementById('btnSaveExpense');
+        if (modalTitle) modalTitle.textContent = "Record New Expense";
+        if (modalIcon) modalIcon.className = "fa-solid fa-receipt text-emerald-400";
+        if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save Expense`;
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('newDate').value = lastExpenseDate || today;
+        document.getElementById('newPaidBy').value = "Shiraz";
+        document.getElementById('newDescription').value = "";
+        document.getElementById('newAmount').value = "";
+        document.getElementById('newRemark').value = "";
+        selectCategory('Food');
+        updateCalculatedTotal();
+        pendingPayments = [];
+        pendingBills = [];
+        renderThumbnails();
+      }
       document.getElementById('addModal').classList.remove('hidden');
-      pendingPayments = [];
-      pendingBills = [];
-      renderThumbnails();
-      document.getElementById('newDescription').focus();
+      setTimeout(() => {
+        document.getElementById('newDescription').focus();
+      }, 100);
     }
 
     function closeAddModal() {
       document.getElementById('addModal').classList.add('hidden');
+      editingExpenseId = null;
+      const modalTitle = document.getElementById('modalExpenseTitle');
+      const modalIcon = document.getElementById('modalExpenseIcon');
+      const saveBtn = document.getElementById('btnSaveExpense');
+      if (modalTitle) modalTitle.textContent = "Record New Expense";
+      if (modalIcon) modalIcon.className = "fa-solid fa-receipt text-emerald-400";
+      if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save Expense`;
+
       document.getElementById('addExpenseForm').reset();
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('newDate').value = lastExpenseDate || today;
       pendingPayments = [];
       pendingBills = [];
       renderThumbnails();
     }
 
-    // Modal Fund Controls
+    // Modal Fund Controls with Date Retention
     function openAddFundModal() {
+      if (!editingFundId) {
+        const modalTitle = document.getElementById('modalFundTitle');
+        const modalIcon = document.getElementById('modalFundIcon');
+        const saveBtn = document.getElementById('btnSaveFund');
+        if (modalTitle) modalTitle.textContent = "Record Company Advance / Fund";
+        if (modalIcon) modalIcon.className = "fa-solid fa-hand-holding-dollar text-indigo-400";
+        if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save Advance Fund`;
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('fundDate').value = lastFundDate || today;
+        document.getElementById('fundAmount').value = "";
+        document.getElementById('fundSource').value = "";
+        document.getElementById('fundRemark').value = "";
+        updateFundCalculatedTotal();
+        pendingFundProofs = [];
+        renderFundThumbnails();
+      }
       document.getElementById('addFundModal').classList.remove('hidden');
-      pendingFundProofs = [];
-      renderFundThumbnails();
-      document.getElementById('fundAmount').focus();
+      setTimeout(() => {
+        document.getElementById('fundAmount').focus();
+      }, 100);
     }
 
     function closeAddFundModal() {
       document.getElementById('addFundModal').classList.add('hidden');
+      editingFundId = null;
+      const modalTitle = document.getElementById('modalFundTitle');
+      const modalIcon = document.getElementById('modalFundIcon');
+      const saveBtn = document.getElementById('btnSaveFund');
+      if (modalTitle) modalTitle.textContent = "Record Company Advance / Fund";
+      if (modalIcon) modalIcon.className = "fa-solid fa-hand-holding-dollar text-indigo-400";
+      if (saveBtn) saveBtn.innerHTML = `<i class="fa-solid fa-check"></i> Save Advance Fund`;
+
       document.getElementById('addFundForm').reset();
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('fundDate').value = lastFundDate || today;
       pendingFundProofs = [];
       renderFundThumbnails();
+    }
+
+    // In-Place Edit Expense
+    async function editExpenseItem(id) {
+      try {
+        const item = await window.appDB.getExpense(id);
+        if (!item) {
+          alert("Expense record not found!");
+          return;
+        }
+        editingExpenseId = item.id;
+        document.getElementById('modalExpenseTitle').textContent = "Edit Expense Voucher";
+        document.getElementById('modalExpenseIcon').className = "fa-solid fa-pen-to-square text-amber-400";
+        document.getElementById('btnSaveExpense').innerHTML = `<i class="fa-solid fa-check"></i> Update Expense`;
+
+        document.getElementById('newDate').value = item.date || '';
+        document.getElementById('newPaidBy').value = item.paidBy || 'Shiraz';
+        document.getElementById('newDescription').value = item.description || '';
+        document.getElementById('newAmount').value = item.amountExpression || item.amountTotal || '';
+        document.getElementById('newRemark').value = item.remark || '';
+        
+        selectCategory(item.category || 'Food');
+        updateCalculatedTotal();
+
+        pendingPayments = item.payments ? [...item.payments] : [];
+        pendingBills = item.bills ? [...item.bills] : [];
+        renderThumbnails();
+
+        document.getElementById('addModal').classList.remove('hidden');
+      } catch (err) {
+        alert("Error loading expense for edit: " + err.message);
+      }
+    }
+
+    // In-Place Edit Advance Fund
+    async function editFundItem(id) {
+      try {
+        const item = await window.appDB.getFund(id);
+        if (!item) {
+          alert("Advance record not found!");
+          return;
+        }
+        editingFundId = item.id;
+        document.getElementById('modalFundTitle').textContent = "Edit Company Advance";
+        document.getElementById('modalFundIcon').className = "fa-solid fa-pen-to-square text-amber-400";
+        document.getElementById('btnSaveFund').innerHTML = `<i class="fa-solid fa-check"></i> Update Advance`;
+
+        document.getElementById('fundDate').value = item.date || '';
+        document.getElementById('fundAmount').value = item.amountExpression || item.amountTotal || '';
+        document.getElementById('fundSource').value = item.source || '';
+        document.getElementById('fundRemark').value = item.remark || '';
+        updateFundCalculatedTotal();
+
+        pendingFundProofs = item.payments ? [...item.payments] : [];
+        renderFundThumbnails();
+
+        document.getElementById('addFundModal').classList.remove('hidden');
+      } catch (err) {
+        alert("Error loading advance for edit: " + err.message);
+      }
     }
 
     function setDesc(val) { document.getElementById('newDescription').value = val; }
@@ -1200,16 +1577,20 @@
     function removePendingBill(i) { pendingBills.splice(i, 1); renderThumbnails(); }
     function removePendingFundProof(i) { pendingFundProofs.splice(i, 1); renderFundThumbnails(); }
 
-    // Save Expense
+    // Save or Update Expense
     async function submitNewExpense(e) {
       e.preventDefault();
       const btn = document.getElementById('btnSaveExpense');
       btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+      const isEditing = Boolean(editingExpenseId);
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Saving...'}`;
 
       try {
-        await window.appDB.addExpense({
-          date: document.getElementById('newDate').value,
+        const chosenDate = document.getElementById('newDate').value || new Date().toISOString().split('T')[0];
+        lastExpenseDate = chosenDate;
+
+        const payload = {
+          date: chosenDate,
           description: document.getElementById('newDescription').value,
           category: document.getElementById('newCategory').value,
           amountExpression: document.getElementById('newAmount').value,
@@ -1217,16 +1598,23 @@
           remark: document.getElementById('newRemark').value,
           payments: pendingPayments,
           bills: pendingBills
-        });
+        };
+
+        if (isEditing) {
+          await window.appDB.updateExpense(editingExpenseId, payload);
+          showToast("Expense updated successfully!");
+        } else {
+          await window.appDB.addExpense(payload);
+          showToast("Expense saved in device storage!");
+        }
 
         closeAddModal();
-        showToast("Expense saved in device storage!");
         await applyFilter();
       } catch (err) {
         alert("Error saving: " + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-check"></i> Save Expense`;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> ${isEditing ? 'Update Expense' : 'Save Expense'}`;
       }
     }
 
@@ -1237,30 +1625,41 @@
       await applyFilter();
     }
 
-    // Save Fund
+    // Save or Update Fund
     async function submitNewFund(e) {
       e.preventDefault();
       const btn = document.getElementById('btnSaveFund');
       btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+      const isEditing = Boolean(editingFundId);
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Saving...'}`;
 
       try {
-        await window.appDB.addFund({
-          date: document.getElementById('fundDate').value,
+        const chosenDate = document.getElementById('fundDate').value || new Date().toISOString().split('T')[0];
+        lastFundDate = chosenDate;
+
+        const payload = {
+          date: chosenDate,
           amountExpression: document.getElementById('fundAmount').value,
           source: document.getElementById('fundSource').value,
           remark: document.getElementById('fundRemark').value,
           payments: pendingFundProofs
-        });
+        };
+
+        if (isEditing) {
+          await window.appDB.updateFund(editingFundId, payload);
+          showToast("Company advance updated!");
+        } else {
+          await window.appDB.addFund(payload);
+          showToast("Company advance saved!");
+        }
 
         closeAddFundModal();
-        showToast("Company advance saved!");
         await applyFilter();
       } catch (err) {
         alert("Error saving fund: " + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-check"></i> Save Advance Fund`;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> ${isEditing ? 'Update Advance' : 'Save Advance Fund'}`;
       }
     }
 
@@ -1270,7 +1669,6 @@
       showToast("Advance entry removed.");
       await applyFilter();
     }
-
     // In-Browser Exports (100% Client-Side)
     async function triggerExport(type) {
       if (currentExpenses.length === 0) {
