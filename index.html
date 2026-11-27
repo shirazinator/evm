@@ -1109,8 +1109,14 @@
                 <span class="font-extrabold text-slate-900">${friendlyDate}</span>
                 <span class="px-2 py-0.5 text-[10px] rounded-full font-bold border ${badgeColor}">${items.length} voucher${items.length === 1 ? '' : 's'}</span>
               </div>
-              <div class="text-xs font-black text-emerald-700">
-                Day Total: ₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}
+              <div class="flex items-center gap-2.5">
+                <span class="text-xs font-black text-emerald-700">Day Total: ₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                <button type="button" onclick="event.stopPropagation(); downloadDayExpensesZip('${date}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 shadow-2xs transition flex items-center gap-1.5" title="Download all ${items.length} vouchers as separate single PDFs in a ZIP">
+                  <i class="fa-solid fa-file-zipper text-blue-600"></i> Day Single PDFs (${items.length})
+                </button>
+                <button type="button" onclick="event.stopPropagation(); downloadDayExpensesPDF('${date}')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 shadow-2xs transition flex items-center gap-1.5" title="Download combined Day PDF">
+                  <i class="fa-solid fa-file-pdf text-rose-600"></i> Day PDF
+                </button>
               </div>
             </div>
           </td>
@@ -1143,6 +1149,9 @@
             <td class="px-4 py-3 text-slate-500 text-xs italic">${e.remark || '-'}</td>
             <td class="px-4 py-3 text-center whitespace-nowrap">
               <div class="flex items-center justify-center gap-2">
+                <button onclick="downloadSingleExpensePDF(${e.id})" class="text-slate-400 hover:text-rose-600 transition p-1" title="Download Single Voucher PDF">
+                  <i class="fa-solid fa-file-pdf"></i>
+                </button>
                 <button onclick="editExpenseItem(${e.id})" class="text-slate-400 hover:text-blue-600 transition p-1" title="Edit Expense">
                   <i class="fa-solid fa-pen-to-square"></i>
                 </button>
@@ -1181,6 +1190,9 @@
                   ${bills.length === 0 ? '<span class="text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full font-bold">No Bill</span>' : ''}
                 </div>
                 <div class="flex items-center gap-2">
+                  <button onclick="downloadSingleExpensePDF(${e.id})" class="text-rose-700 hover:text-rose-800 text-xs px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 font-semibold flex items-center gap-1 transition border border-rose-200/60" title="Download Single Voucher PDF">
+                    <i class="fa-solid fa-file-pdf text-[11px]"></i> PDF
+                  </button>
                   <button onclick="editExpenseItem(${e.id})" class="text-slate-600 hover:text-blue-600 text-xs px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-blue-50 font-semibold flex items-center gap-1 transition">
                     <i class="fa-solid fa-pen-to-square text-[11px]"></i> Edit
                   </button>
@@ -1194,18 +1206,30 @@
         });
 
         mobCard.innerHTML = `
-          <button type="button" onclick="toggleDayAccordion('${date}')" class="w-full px-4 py-3 bg-slate-50/90 hover:bg-slate-100 border-b border-slate-200/80 flex items-center justify-between text-left transition select-none">
+          <div class="w-full px-4 py-3 bg-slate-50/90 hover:bg-slate-100 border-b border-slate-200/80 flex items-center justify-between text-left transition select-none cursor-pointer" onclick="toggleDayAccordion('${date}')">
             <div class="flex items-center gap-2">
               <i id="day-mob-icon-${safe}" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}"></i>
               <div>
-                <span class="font-bold text-slate-800 text-xs sm:text-sm">${friendlyDate}</span>
-                <span class="ml-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">${items.length} item${items.length === 1 ? '' : 's'}</span>
+                <div class="font-bold text-slate-800 text-xs sm:text-sm">${friendlyDate}</div>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${badgeColor}">${items.length} item${items.length === 1 ? '' : 's'}</span>
+                  <span class="text-xs font-black text-emerald-700">₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+                </div>
               </div>
             </div>
-            <div class="text-right">
-              <span class="text-xs sm:text-sm font-black text-emerald-700">₹ ${dayTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</span>
+            <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+              <button type="button" onclick="downloadDayExpensesZip('${date}')" class="px-2 py-1 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-2xs flex items-center gap-1" title="Download all vouchers as single PDFs in ZIP">
+                <i class="fa-solid fa-file-zipper"></i> ZIP (${items.length})
+              </button>
+              <button type="button" onclick="downloadDayExpensesPDF('${date}')" class="px-2 py-1 text-[10px] font-bold rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 shadow-2xs flex items-center gap-1" title="Download Day PDF">
+                <i class="fa-solid fa-file-pdf"></i> PDF
+              </button>
             </div>
-          </button>
+          </div>
+          <div id="day-mob-body-${safe}" class="divide-y divide-slate-100 ${isOpen ? '' : 'hidden'}">
+            ${mobItemsHtml}
+          </div>
+        `;
           <div id="day-mob-body-${safe}" class="divide-y divide-slate-100 ${isOpen ? '' : 'hidden'}">
             ${mobItemsHtml}
           </div>
@@ -1669,6 +1693,78 @@
       showToast("Advance entry removed.");
       await applyFilter();
     }
+
+    // Download Individual Expense Voucher PDF
+    async function downloadSingleExpensePDF(id) {
+      let expense = currentExpenses.find(e => e.id === id);
+      if (!expense && window.appDB) {
+        expense = await window.appDB.getExpense(id);
+      }
+      if (!expense) {
+        alert("Expense voucher not found.");
+        return;
+      }
+
+      showToast(`Generating PDF voucher for ${expense.description || 'expense'}...`);
+      try {
+        const pdfBlob = await window.generatePDFVouchers([expense], expense.date || 'voucher');
+        const safeDesc = (expense.description || 'expense').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
+        const filename = `Voucher_${expense.date || 'single'}_${safeDesc}_Rs${expense.amountTotal || 0}.pdf`;
+        saveAs(pdfBlob, filename);
+        showToast("Single voucher PDF downloaded!");
+      } catch (err) {
+        console.error("Error generating single voucher:", err);
+        alert("Failed to generate voucher PDF: " + err.message);
+      }
+    }
+
+    // Download All Day Vouchers as Individual PDFs bundled into a clean ZIP
+    async function downloadDayExpensesZip(date) {
+      const dayItems = currentExpenses.filter(e => (e.date || 'Undated') === date);
+      if (dayItems.length === 0) {
+        alert("No expenses found for " + date);
+        return;
+      }
+
+      showToast(`Generating ${dayItems.length} single voucher PDFs for ${date}...`);
+      try {
+        const zip = new JSZip();
+        for (let i = 0; i < dayItems.length; i++) {
+          const exp = dayItems[i];
+          const pdfBlob = await window.generatePDFVouchers([exp], exp.date || 'voucher');
+          const safeDesc = (exp.description || 'expense').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 25);
+          const filename = `Voucher_${String(i + 1).padStart(2, '0')}_${exp.date || ''}_${safeDesc}_Rs${exp.amountTotal || 0}.pdf`;
+          zip.file(filename, pdfBlob);
+        }
+
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        saveAs(zipBlob, `Day_Vouchers_${date}_Single_PDFs.zip`);
+        showToast(`Downloaded ZIP containing ${dayItems.length} single PDFs!`);
+      } catch (err) {
+        console.error("Error generating Day ZIP:", err);
+        alert("Failed to generate Day ZIP: " + err.message);
+      }
+    }
+
+    // Download All Day Vouchers Combined into one Day PDF
+    async function downloadDayExpensesPDF(date) {
+      const dayItems = currentExpenses.filter(e => (e.date || 'Undated') === date);
+      if (dayItems.length === 0) {
+        alert("No expenses found for " + date);
+        return;
+      }
+
+      showToast(`Generating combined PDF for ${date}...`);
+      try {
+        const pdfBlob = await window.generatePDFVouchers(dayItems, date);
+        saveAs(pdfBlob, `Day_Vouchers_Combined_${date}.pdf`);
+        showToast("Day combined PDF downloaded!");
+      } catch (err) {
+        console.error("Error generating Day PDF:", err);
+        alert("Failed to generate Day PDF: " + err.message);
+      }
+    }
+
     // In-Browser Exports (100% Client-Side)
     async function triggerExport(type) {
       if (currentExpenses.length === 0) {

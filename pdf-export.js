@@ -112,7 +112,7 @@ async function generatePDFVouchers(expenses, cycleLabel = 'Report', fundsSummary
       color: navy
     });
 
-    const badgeText = `ITEM ${itemNum} OF ${totalPages}`;
+    const badgeText = totalPages === 1 ? 'OFFICIAL VOUCHER' : `ITEM ${itemNum} OF ${totalPages}`;
     const badgeW = fontBold.widthOfTextAtSize(badgeText, 8) + 14;
     const badgeX = cardX + cardW - 12 - badgeW;
     const badgeY = cardY + cardH - 22;
@@ -212,7 +212,7 @@ async function generatePDFVouchers(expenses, cycleLabel = 'Report', fundsSummary
       color: slateMed
     });
 
-    const pageTxt = `Page ${itemNum} of ${totalPages}`;
+    const pageTxt = totalPages === 1 ? 'Voucher Page 1 of 1' : `Page ${itemNum} of ${totalPages}`;
     const pageW = fontBold.widthOfTextAtSize(pageTxt, 8);
     page.drawText(pageTxt, {
       x: PAGE_W - 24 - pageW,
